@@ -1,0 +1,144 @@
+import psutil
+import os
+import time
+import sys
+import urllib3
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import smtplib
+
+def is_connected():
+    try:
+        urllib3.connectionpool.connection_from_url('http://216.58.192.142',timeout=1)
+        return True
+    except urllib3.URLError as err:
+        return False
+
+def MailSender(filename,toaddr):
+    try:
+        fromaddr = "botregauri@gmail.com"
+
+        msg = MIMEMultipart()
+
+        msg['From'] = fromaddr
+        msg['To'] = toaddr
+
+        body = """
+                Hello %s,
+                       Welcome to XYZ company.
+                       Please find attached document which contains Log of Running Process.
+                       Log file is created at : %s
+
+                       This is auto generated mail.
+
+                Thanks and Regards,
+                Gauri Botre
+                """ % (toaddr, time)
+
+        subject = """Process log generted at : %s""" % time
+
+        msg['Subject'] = subject
+
+        msg.attach(MIMEText(body, 'plain'))
+
+        attachment = open(filname, "rb")
+
+        p = MIMEBase('application', 'octet-stream')
+
+        p.set_payload((attachment).read())
+
+        encoders.encode_base64(p)
+
+        p.add_header('Content-Disposition', "attachment; filename=%s" % filname)
+
+        msg.attach(p)
+        # print("LLLLLL")
+        s = smtplib.SMTP('smtp.gmail.com', 587)
+
+        s.starttls()
+        #print("JJJJJJj")
+        s.login(fromaddr, "3796gouri")
+        #print("KKKKKKK")
+        text = msg.as_string()
+
+        s.sendmail(fromaddr, toaddr, text)
+
+        s.quit()
+
+        print("Log file successfully sent throught Mail")
+
+        print("hhhhh")
+    except Exception as E:
+        print("Unable to send mail", E)
+
+
+def ProcessDisplay():
+    listprocess = []
+
+    for proc in psutil.process_iter():
+        try:
+            pinfo = proc.as_dict(attrs=['pid', 'name', 'username'])
+
+            listprocess.append(pinfo)
+
+        except(psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    return listprocess
+
+def main():
+
+    if len(sys.argv) != 3:
+        print("Error : Invalid number of arguments")
+        exit()
+    if sys.argv[1] == "-h" or sys.argv[1] == "_H":
+        print("This Script is used to traverse specific diretory and display checksum of files")
+        exit()
+    if sys.argv[1] == "-u" or sys.argv[1] == "-U":
+        print("Usage : Applicationname AbsolutePath_of_Directory Extention")
+        exit()
+
+    path= os.getcwd()
+    dirnm=sys.argv[1]
+    flag = os.path.isabs(path)
+
+    if flag == False:
+        path = os.path.abspath(path)
+
+    exits = os.path.isdir(path)
+    # print(exits)
+    dups = {}
+
+    if not os.path.exists(dirnm):
+        try:
+            os.mkdir(dirnm)
+        except:
+            pass
+
+    separator = "-" * 80
+    log_path = os.path.join(dirnm, " file %s.log" % (time.time()))
+    f = open(log_path, 'w')
+
+    print(" Design automation script which accept directory name and mail id from user and create log file in that directory which contains information of running processes as its name, PID,Username. After creating log file send that log file to the specified mail:")
+    listprocess = ProcessDisplay()
+    #print(listprocess)
+    for elem in listprocess:
+        #print(elem)
+        f.write(str(elem))
+        f.write("\n")
+
+        print("Log file is successfully generated at location %s" % (log_path))
+
+        connected = is_connected()
+
+        if connected:
+            starttime = time.time()
+            MailSender(log_path, sys.argv[2])
+            endtime = time.time()
+
+            print('Took %s seconds to send mail' % (endtime - starttime))
+    f.close()
+
+if __name__ == "__main__":
+    main()
